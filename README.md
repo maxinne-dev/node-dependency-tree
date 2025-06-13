@@ -93,16 +93,16 @@ for use in the [Dependents](https://github.com/mrjoelkemp/sublime-dependents) pl
 * Assumes a global install: `npm install -g dependency-tree`
 
 ```
-dependency-tree --directory=path/to/all/supported/files [--list-form] [--ignore-node-modules] [-c path/to/require/config] [-w path/to/webpack/config] filename
+dependency-tree --directory=path/to/all/supported/files [--list-form [relative]] [--ignore-node-modules] [-c path/to/require/config] [-w path/to/webpack/config] filename
 ```
 
 Prints the dependency tree of the given filename as stringified json (by default).
 
-* You can alternatively print out the list form one element per line using the `--list-form` option.
+* You can alternatively print out the list form one element per line using the `--list-form` option. Pass `relative` as an argument to get paths relative to the current directory (e.g., `--list-form relative`).
 
 ## How does this work?
 
-Dependency tree takes in a starting file, extracts its declared dependencies via [precinct](https://github.com/dependents/node-precinct/), resolves each of those dependencies to a file on the filesystem via [filing-cabinet](https://github.com/dependents/node-filing-cabinet), then recursively performs those steps until there are no more dependencies to process.
+Dependency tree takes in a starting file, extracts its declared dependencies via [precinct](https://github.com/dependents/node-precinct/), resolves each of those dependencies to a file on the filesystem via [filing-cabinet](https://github.com/dependents/node-filing-cabinet/), then recursively performs those steps until there are no more dependencies to process.
 
 In more detail, the starting file is passed to precinct to extract dependencies. Dependency-tree doesn't care about how to extract dependencies, so it delegates that work to precinct: which is a multi-language dependency extractor; we'll focus on JavaScript tree generation for this example. To do the extraction, precinct delegates the abstract-syntax-tree (AST) generation to the default parser for [node-source-walk](https://github.com/dependents/node-source-walk). Precinct uses the AST to determine what type of JS module the file is (Commonjs, AMD, or ES6) and then delegates to the "detective" that's appropriate for that module type. The "detective" contains the logic for how to extract dependencies based on the module syntax format; i.e., the way dependencies are declared in commonjs is different than in AMD (which has 4 ways of doing that, for example).
 

@@ -861,6 +861,21 @@ describe('dependencyTree', () => {
       assert.equal(list.at(-1), filename);
     });
 
+    it('returns relative paths when isListForm is "relative"', () => {
+      const directory = path.join(__dirname, '/fixtures/amd');
+      const filename = path.normalize(`${directory}/a.js`);
+      const list = dependencyTree.toList({
+        filename,
+        directory,
+        isListForm: 'relative'
+      });
+
+      assert.equal(list.length, 3);
+      assert.equal(list[0], path.relative(process.cwd(), path.normalize(`${directory}/c.js`)));
+      assert.equal(list[1], path.relative(process.cwd(), path.normalize(`${directory}/b.js`)));
+      assert.equal(list.at(-1), path.relative(process.cwd(), filename));
+    });
+
     describe('module formats', () => {
       describe('amd', () => {
         testToList('amd');

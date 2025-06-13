@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const process = require('node:process');
 const { debuglog } = require('node:util');
 const cabinet = require('filing-cabinet');
 const precinct = require('precinct');
@@ -22,7 +23,7 @@ const debug = debuglog('tree');
  * @param {Object} [options.visited] - Cache of visited, absolutely pathed files that should not be reprocessed.
  *                                     Format is a filename -> tree as list lookup table
  * @param {Array} [options.nonExistent] - List of partials that do not exist
- * @param {Boolean} [options.isListForm=false]
+ * @param {Boolean|String} [options.isListForm=false]
  * @param {String|Object} [options.tsConfig] Path to a typescript config (or a preloaded one).
  * @param {Boolean} [options.noTypeDefinitions] For TypeScript imports, whether to resolve to `*.js` instead of `*.d.ts`.
  * @param {Boolean} [options.ignoreNodeModules] Set to true to ignore dependencies in node_modules.
@@ -46,6 +47,10 @@ module.exports = function(options = {}) {
   if (config.isListForm) {
     debug('list form of results requested');
     tree = [...results];
+    if (config.isListForm === 'relative') {
+      debug('converting paths to relative');
+      tree = tree.map(p => path.relative(process.cwd(), p));
+    }
   } else {
     debug('object form of results requested');
     tree = {};
@@ -69,7 +74,9 @@ module.exports = function(options = {}) {
  * Params are those of module.exports
  */
 module.exports.toList = function(options = {}) {
-  options.isListForm = true;
+  if (!options.isListForm) {
+    options.isListForm = true;
+  }
 
   return module.exports(options);
 };

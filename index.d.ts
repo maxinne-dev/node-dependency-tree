@@ -9,7 +9,7 @@ declare namespace dependencyTree {
     directory: string;
     visited?: Tree;
     nonExistent?: string[];
-    isListForm?: boolean;
+    isListForm?: boolean | 'relative';
     requireConfig?: string;
     webpackConfig?: string;
     nodeModulesConfig?: any;
