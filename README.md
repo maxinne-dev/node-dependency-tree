@@ -33,7 +33,8 @@ const tree = dependencyTree({
   }, // optional
   filter: path => path.indexOf('node_modules') === -1, // optional
   nonExistent: [], // optional
-  noTypeDefinitions: false // optional
+  noTypeDefinitions: false, // optional
+  ignoreNodeModules: false // optional
 });
 
 // Returns a post-order traversal (list form) of the tree with duplicate sub-trees pruned.
@@ -60,6 +61,7 @@ const list = dependencyTree.toList({
   - for example `detective.amd.skipLazyLoaded: true` tells the AMD detective to omit inner requires
   - See [precinct's usage docs](https://github.com/dependents/node-precinct#usage) for the list of module types you can pass options to.
 * `noTypeDefinitions`: For TypeScript imports, whether to resolve to `*.js` instead of `*.d.ts`.
+* `ignoreNodeModules`: boolean used to indicate if modules from `node_modules` should be excluded from the dependency tree. Defaults to `false`.
 
 ### Format Details
 
@@ -91,7 +93,7 @@ for use in the [Dependents](https://github.com/mrjoelkemp/sublime-dependents) pl
 * Assumes a global install: `npm install -g dependency-tree`
 
 ```
-dependency-tree --directory=path/to/all/supported/files [--list-form] [-c path/to/require/config] [-w path/to/webpack/config] filename
+dependency-tree --directory=path/to/all/supported/files [--list-form] [--ignore-node-modules] [-c path/to/require/config] [-w path/to/webpack/config] filename
 ```
 
 Prints the dependency tree of the given filename as stringified json (by default).

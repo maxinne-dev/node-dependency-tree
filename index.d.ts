@@ -16,7 +16,8 @@ declare namespace dependencyTree {
     detectiveConfig?: any;
     tsConfig?: string | Record<string, any>;
     noTypeDefinitions?: boolean;
-    filter?: (path: string) => boolean;
+    filter?: (path: string, currentFile: string) => boolean;
+    ignoreNodeModules?: boolean;
   }
 
   interface Config extends Options {

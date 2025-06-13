@@ -25,6 +25,7 @@ const debug = debuglog('tree');
  * @param {Boolean} [options.isListForm=false]
  * @param {String|Object} [options.tsConfig] Path to a typescript config (or a preloaded one).
  * @param {Boolean} [options.noTypeDefinitions] For TypeScript imports, whether to resolve to `*.js` instead of `*.d.ts`.
+ * @param {Boolean} [options.ignoreNodeModules] Set to true to ignore dependencies in node_modules.
  * @return {Object}
  */
 module.exports = function(options = {}) {
@@ -152,11 +153,22 @@ function traverse(config = {}) {
   // so that any dependent dependencies exit
   config.visited[config.filename] = config.isListForm ? [] : {};
 
-  if (config.filter) {
+  let filter = config.filter;
+  if (config.ignoreNodeModules) {
+    const nodeModulesFilter = path => !path.includes('node_modules');
+    if (filter) {
+      const oldFilter = filter;
+      filter = (filePath, currentFile) => nodeModulesFilter(filePath) && oldFilter(filePath, currentFile);
+    } else {
+      filter = nodeModulesFilter;
+    }
+  }
+
+  if (filter) {
     debug('using filter function to filter out dependencies');
     debug(`unfiltered number of dependencies: ${dependencies.length}`);
     // eslint-disable-next-line unicorn/no-array-method-this-argument, unicorn/no-array-callback-reference
-    dependencies = dependencies.filter(filePath => config.filter(filePath, config.filename));
+    dependencies = dependencies.filter(filePath => filter(filePath, config.filename));
     debug(`filtered number of dependencies: ${dependencies.length}`);
   }
 
