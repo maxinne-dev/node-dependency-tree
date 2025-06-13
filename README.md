@@ -92,13 +92,28 @@ for use in the [Dependents](https://github.com/mrjoelkemp/sublime-dependents) pl
 
 * Assumes a global install: `npm install -g dependency-tree`
 
-```
-dependency-tree --directory=path/to/all/supported/files [--list-form [relative]] [--ignore-node-modules] [-c path/to/require/config] [-w path/to/webpack/config] filename
+```sh
+dependency-tree [options] <filename>
 ```
 
-Prints the dependency tree of the given filename as stringified json (by default).
+Prints the dependency tree of the given filename.
 
-* You can alternatively print out the list form one element per line using the `--list-form` option. Pass `relative` as an argument to get paths relative to the current directory (e.g., `--list-form relative`).
+**Arguments:**
+
+*   `filename`: The path to the file to get the dependency tree for.
+
+**Options:**
+
+*   `-d, --directory <path>`: The directory containing all JS files (defaults to current working directory).
+*   `--list-form [relative]`: Print the dependency tree as a list. Pass "relative" to get relative paths.
+*   `--pretty-tree`: Print the dependency tree as a pretty tree view, like the `tree` command.
+*   `--ignore-node-modules`: Ignore dependencies in `node_modules`.
+*   `-c, --require-config <path>`: The path to a requirejs config.
+*   `-w, --webpack-config <path>`: The path to a webpack config.
+*   `--ts-config <path>`: The path to a typescript config.
+*   `-h, --help`: display help for command.
+
+By default, it prints the dependency tree as stringified JSON. With `--list-form`, it prints a new-line separated list of files. With `--pretty-tree`, it prints an ASCII tree.
 
 ## How does this work?
 
