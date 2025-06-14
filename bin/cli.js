@@ -60,22 +60,43 @@ if (options.prettyTree) {
 
 function getSymbolShortKind(kind) {
   switch (kind) {
-    case 'class': return 'C';
-    case 'function': return 'f';
-    case 'variable': return 'v';
-    case 'method': return 'm';
-    case 'property': return 'p';
-    case 'getter': return 'get';
-    case 'setter': return 'set';
-    case 'constructor': return 'ctor';
-    case 're-export': return '->';
-    case 'interface': return '•';
-    default: return '•';
+    case 'class': { return 'C';
+    }
+
+    case 'function': { return 'f';
+    }
+
+    case 'variable': { return 'v';
+    }
+
+    case 'method': { return 'm';
+    }
+
+    case 'property': { return 'p';
+    }
+
+    case 'getter': { return 'get';
+    }
+
+    case 'setter': { return 'set';
+    }
+
+    case 'constructor': { return 'ctor';
+    }
+
+    case 're-export': { return '->';
+    }
+
+    case 'interface': { return '•';
+    }
+
+    default: { return '•';
+    }
   }
 }
 
 function prettyPrintSymbols(symbols, prefix) {
-  symbols.forEach((symbol, i) => {
+  for (const [i, symbol] of symbols.entries()) {
     const isLast = i === symbols.length - 1;
     const connector = isLast ? '└── ' : '├── ';
     const newPrefix = prefix + (isLast ? '    ' : '│   ');
@@ -85,7 +106,7 @@ function prettyPrintSymbols(symbols, prefix) {
     if (symbol.children && symbol.children.length > 0) {
       prettyPrintSymbols(symbol.children, newPrefix);
     }
-  });
+  }
 }
 
 function prettyPrintFile(filePath, subTree, prefix) {
@@ -96,7 +117,7 @@ function prettyPrintFile(filePath, subTree, prefix) {
 
   const children = [...symbols, ...dependencies];
 
-  children.forEach((child, i) => {
+  for (const [i, child] of children.entries()) {
     const isLast = i === children.length - 1;
     const connector = isLast ? '└── ' : '├── ';
     const newPrefix = prefix + (isLast ? '    ' : '│   ');
@@ -110,5 +131,5 @@ function prettyPrintFile(filePath, subTree, prefix) {
       console.log(`${prefix}${connector}${path.basename(child.path)}`);
       prettyPrintFile(child.path, subTree[child.path], newPrefix);
     }
-  });
+  }
 }

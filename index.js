@@ -74,9 +74,7 @@ module.exports = function(options = {}) {
  * Params are those of module.exports
  */
 module.exports.toList = function(options = {}) {
-  if (!options.isListForm) {
-    options.isListForm = true;
-  }
+  options.isListForm ||= true;
 
   return module.exports(options);
 };
@@ -160,7 +158,7 @@ function traverse(config = {}) {
   // so that any dependent dependencies exit
   config.visited[config.filename] = config.isListForm ? [] : {};
 
-  let filter = config.filter;
+  let { filter } = config;
   if (config.ignoreNodeModules) {
     const nodeModulesFilter = path => !path.includes('node_modules');
     if (filter) {
@@ -174,7 +172,7 @@ function traverse(config = {}) {
   if (filter) {
     debug('using filter function to filter out dependencies');
     debug(`unfiltered number of dependencies: ${dependencies.length}`);
-    // eslint-disable-next-line unicorn/no-array-method-this-argument, unicorn/no-array-callback-reference
+
     dependencies = dependencies.filter(filePath => filter(filePath, config.filename));
     debug(`filtered number of dependencies: ${dependencies.length}`);
   }

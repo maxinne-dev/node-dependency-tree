@@ -31,6 +31,21 @@ function testTreesForFormat(format, ext = '.js') {
   });
 }
 
+function testToList(format, ext = '.js') {
+  it('returns a post-order list form of the dependency tree', () => {
+    const directory = path.join(__dirname, `/fixtures/${format}`);
+    const filename = path.normalize(`${directory}/a${ext}`);
+
+    const list = dependencyTree.toList({
+      filename,
+      directory
+    });
+
+    assert.ok(Array.isArray(list));
+    assert.ok(list.length > 0);
+  });
+}
+
 function mockStylus() {
   mockfs({
     [path.join(__dirname, '/fixtures/stylus')]: {
@@ -815,21 +830,6 @@ describe('dependencyTree', () => {
   });
 
   describe('toList', () => {
-    function testToList(format, ext = '.js') {
-      it('returns a post-order list form of the dependency tree', () => {
-        const directory = path.join(__dirname, `/fixtures/${format}`);
-        const filename = path.normalize(`${directory}/a${ext}`);
-
-        const list = dependencyTree.toList({
-          filename,
-          directory
-        });
-
-        assert.ok(Array.isArray(list));
-        assert.ok(list.length > 0);
-      });
-    }
-
     it('returns an empty list on a non-existent filename', () => {
       mockfs({
         imaginary: {}
@@ -875,51 +875,51 @@ describe('dependencyTree', () => {
       assert.equal(list[1], path.relative(process.cwd(), path.normalize(`${directory}/b.js`)));
       assert.equal(list.at(-1), path.relative(process.cwd(), filename));
     });
+  });
 
-    describe('module formats', () => {
-      describe('amd', () => {
-        testToList('amd');
+  describe('toList on module formats', () => {
+    describe('amd', () => {
+      testToList('amd');
+    });
+
+    describe('commonjs', () => {
+      testToList('commonjs');
+    });
+
+    describe('es6', () => {
+      beforeEach(() => {
+        mockEs6();
       });
 
-      describe('commonjs', () => {
-        testToList('commonjs');
+      testToList('es6');
+    });
+
+    describe('sass', () => {
+      beforeEach(() => {
+        mockSass();
       });
 
-      describe('es6', () => {
-        beforeEach(() => {
-          mockEs6();
-        });
+      testToList('sass', '.scss');
+    });
 
-        testToList('es6');
+    describe('stylus', () => {
+      beforeEach(() => {
+        mockStylus();
       });
 
-      describe('sass', () => {
-        beforeEach(() => {
-          mockSass();
-        });
+      testToList('stylus', '.styl');
+    });
 
-        testToList('sass', '.scss');
+    describe('less', () => {
+      beforeEach(() => {
+        mockLess();
       });
 
-      describe('stylus', () => {
-        beforeEach(() => {
-          mockStylus();
-        });
+      testToList('less', '.less');
+    });
 
-        testToList('stylus', '.styl');
-      });
-
-      describe('less', () => {
-        beforeEach(() => {
-          mockLess();
-        });
-
-        testToList('less', '.less');
-      });
-
-      describe('typescript', () => {
-        testToList('ts', '.ts');
-      });
+    describe('typescript', () => {
+      testToList('ts', '.ts');
     });
   });
 
@@ -1065,24 +1065,22 @@ describe('dependencyTree', () => {
     });
 
     describe('when cloning', () => {
-      describe('and a detective config was set', () => {
-        it('retains the detective config in the clone', () => {
-          const detectiveConfig = {
-            es6: {
-              mixedImports: true
-            }
-          };
+      it('retains the detective config in the clone when a detective config was set', () => {
+        const detectiveConfig = {
+          es6: {
+            mixedImports: true
+          }
+        };
 
-          const config = new Config({
-            detectiveConfig,
-            filename: 'foo',
-            directory: 'bar'
-          });
-
-          const clone = config.clone();
-
-          assert.deepEqual(clone.detectiveConfig, detectiveConfig);
+        const config = new Config({
+          detectiveConfig,
+          filename: 'foo',
+          directory: 'bar'
         });
+
+        const clone = config.clone();
+
+        assert.deepEqual(clone.detectiveConfig, detectiveConfig);
       });
     });
   });
