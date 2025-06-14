@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 'use strict';
 
 const path = require('node:path');
@@ -8,128 +9,97 @@ const dependencyTree = require('../index.js');
 const extractExports = require('../lib/extract-exports.js');
 const { version } = require('../package.json');
 
+function getSymbolsText(filePath, prefix, withSymbols) {
+  if (!withSymbols) {
+    return '';
+  }
+
+  const exports = extractExports(filePath);
+  if (!exports.length) {
+    return '';
+  }
+
+  return exports.map(symbol => `${prefix}* ${symbol.name} (${symbol.kind})`).join('\n') + '\n';
+}
+
+function formatPrettyTree(tree, withSymbols) {
+  const rootPath = Object.keys(tree)[0];
+  if (!rootPath) {
+    return '';
+  }
+
+  let output = `${path.basename(rootPath)}\n`;
+  output += getSymbolsText(rootPath, '  ', withSymbols);
+
+  function buildTreeString(subTree, prefix) {
+    let result = '';
+    const dependencies = Object.keys(subTree);
+    dependencies.forEach((dep, i) => {
+      const isLast = i === dependencies.length - 1;
+      const newPrefix = prefix + (isLast ? '    ' : '│   ');
+      result += `${prefix}${isLast ? '└──' : '├──'} ${path.basename(dep)}\n`;
+      result += getSymbolsText(dep, newPrefix, withSymbols);
+      result += buildTreeString(subTree[dep], newPrefix);
+    });
+    return result;
+  }
+
+  output += buildTreeString(tree[rootPath], '');
+  return output.trim();
+}
+
 program
   .version(version)
-  .arguments('<filename>')
+  .argument('[filename]', 'The path to the file to get the dependency tree for.')
   .option('-d, --directory <path>', 'The directory containing all JS files', process.cwd())
-  .option('--list-form [relative]', 'Print the dependency tree as a list. Pass "relative" to get relative paths')
-  .option('--pretty-tree [type]', 'Print the dependency tree as a pretty tree view. The optional type can be "symbols" to include exported symbols.')
-  .option('--ignore-node-modules', 'Ignore dependencies in node_modules')
-  .option('-c, --require-config <path>', 'The path to a requirejs config')
-  .option('-w, --webpack-config <path>', 'The path to a webpack config')
-  .option('--ts-config <path>', 'The path to a typescript config')
+  .option('--list-form [relative]', 'Print the dependency tree as a list. Pass "relative" to get relative paths.')
+  .option('--pretty-tree [type]', 'Print the dependency tree as a pretty tree view, like the tree command. The optional type can be symbols to include exported symbols.')
+  .option('--ignore-node-modules', 'Ignore dependencies in node_modules.')
+  .option('-c, --require-config <path>', 'The path to a requirejs config.')
+  .option('-w, --webpack-config <path>', 'The path to a webpack config.')
+  .option('--ts-config <path>', 'The path to a typescript config.')
   .parse(process.argv);
 
-const options = program.opts();
-const [filename] = program.args;
+const cliOptions = program.opts();
+let [filename] = program.args;
+
+if (cliOptions.prettyTree && typeof cliOptions.prettyTree === 'string' && cliOptions.prettyTree !== 'symbols') {
+  if (!filename) {
+    filename = cliOptions.prettyTree;
+  }
+
+  cliOptions.prettyTree = true;
+}
 
 if (!filename) {
-  console.error('Error: filename not given');
+  console.error("error: missing required argument 'filename'");
   process.exit(1);
 }
 
-const config = {
+const treeOptions = {
   filename,
-  directory: options.directory,
-  requireConfig: options.requireConfig,
-  webpackConfig: options.webpackConfig,
-  tsConfig: options.tsConfig,
-  ignoreNodeModules: options.ignoreNodeModules
+  directory: cliOptions.directory,
+  requireConfig: cliOptions.requireConfig,
+  webpackConfig: cliOptions.webpackConfig,
+  tsConfig: cliOptions.tsConfig,
+  ignoreNodeModules: cliOptions.ignoreNodeModules
 };
 
-if (options.listForm) {
-  config.isListForm = options.listForm === 'relative' ? 'relative' : true;
-  const list = dependencyTree.toList(config);
+if (cliOptions.listForm) {
+  const list = dependencyTree.toList({
+    ...treeOptions,
+    isListForm: cliOptions.listForm
+  });
   console.log(list.join('\n'));
   process.exit(0);
 }
 
-const tree = dependencyTree(config);
-const rootFilename = path.resolve(process.cwd(), filename);
+const tree = dependencyTree(treeOptions);
 
-if (options.prettyTree) {
-  if (tree[rootFilename]) {
-    console.log(path.basename(rootFilename));
-    prettyPrintFile(rootFilename, tree[rootFilename], '');
-  } else {
-    console.log(path.basename(rootFilename));
-  }
-} else {
-  console.log(JSON.stringify(tree, null, 2));
+if (cliOptions.prettyTree) {
+  const prettyTree = formatPrettyTree(tree, cliOptions.prettyTree === 'symbols');
+  console.log(prettyTree);
+  process.exit(0);
 }
 
-function getSymbolShortKind(kind) {
-  switch (kind) {
-    case 'class': { return 'C';
-    }
-
-    case 'function': { return 'f';
-    }
-
-    case 'variable': { return 'v';
-    }
-
-    case 'method': { return 'm';
-    }
-
-    case 'property': { return 'p';
-    }
-
-    case 'getter': { return 'get';
-    }
-
-    case 'setter': { return 'set';
-    }
-
-    case 'constructor': { return 'ctor';
-    }
-
-    case 're-export': { return '->';
-    }
-
-    case 'interface': { return '•';
-    }
-
-    default: { return '•';
-    }
-  }
-}
-
-function prettyPrintSymbols(symbols, prefix) {
-  for (const [i, symbol] of symbols.entries()) {
-    const isLast = i === symbols.length - 1;
-    const connector = isLast ? '└── ' : '├── ';
-    const newPrefix = prefix + (isLast ? '    ' : '│   ');
-
-    console.log(`${prefix}${connector}${getSymbolShortKind(symbol.kind)} ${symbol.name}`);
-
-    if (symbol.children && symbol.children.length > 0) {
-      prettyPrintSymbols(symbol.children, newPrefix);
-    }
-  }
-}
-
-function prettyPrintFile(filePath, subTree, prefix) {
-  const showSymbols = options.prettyTree === 'symbols';
-
-  const symbols = showSymbols ? extractExports(filePath).map(s => ({ ...s, _type: 'symbol' })) : [];
-  const dependencies = Object.keys(subTree).map(d => ({ path: d, _type: 'dependency' }));
-
-  const children = [...symbols, ...dependencies];
-
-  for (const [i, child] of children.entries()) {
-    const isLast = i === children.length - 1;
-    const connector = isLast ? '└── ' : '├── ';
-    const newPrefix = prefix + (isLast ? '    ' : '│   ');
-
-    if (child._type === 'symbol') {
-      console.log(`${prefix}${connector}${getSymbolShortKind(child.kind)} ${child.name}`);
-      if (child.children && child.children.length > 0) {
-        prettyPrintSymbols(child.children, newPrefix);
-      }
-    } else { // Dependency
-      console.log(`${prefix}${connector}${path.basename(child.path)}`);
-      prettyPrintFile(child.path, subTree[child.path], newPrefix);
-    }
-  }
-}
+console.log(JSON.stringify(tree, null, 2));
