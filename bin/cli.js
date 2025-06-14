@@ -6,109 +6,109 @@ const process = require('node:process');
 const { program } = require('commander');
 const dependencyTree = require('../index.js');
 const extractExports = require('../lib/extract-exports.js');
-
-function getKindChar(kind) {
-  switch (kind) {
-    case 'function':
-      return 'ƒ';
-    case 'class':
-      return 'C';
-    case 'method':
-    case 'constructor':
-      return 'm';
-    case 'property':
-    case 'variable':
-    case 'getter':
-    case 'setter':
-      return 'p';
-    default:
-      return '•';
-  }
-}
-
-function printSymbols(filename, prefix) {
-  const exports = extractExports(filename);
-  if (!exports.length) {
-    return;
-  }
-
-  exports.forEach((exp, index) => {
-    const isLast = index === exports.length - 1;
-    const connector = isLast ? '└──' : '├──';
-    console.log(`${prefix}${connector} ${getKindChar(exp.kind)} ${exp.name}`);
-    if (exp.children?.length > 0) {
-      const childPrefix = prefix + (isLast ? '    ' : '│   ');
-      for (const [childIndex, child] of exp.children.entries()) {
-        const isLastChild = childIndex === exp.children.length - 1;
-        const childConnector = isLastChild ? '└──' : '├──';
-        console.log(`${childPrefix}${childConnector} ${getKindChar(child.kind)} ${child.name}`);
-      }
-    }
-  });
-}
-
-function prettyPrintRecursive(subtree, prefix, withSymbols) {
-  const keys = Object.keys(subtree);
-  for (const [index, key] of keys.entries()) {
-    const isLast = index === keys.length - 1;
-    const connector = isLast ? '└──' : '├──';
-    console.log(`${prefix}${connector} ${path.basename(key)}`);
-    const nextPrefix = prefix + (isLast ? '    ' : '│   ');
-    if (withSymbols) {
-      printSymbols(key, nextPrefix);
-    }
-
-    prettyPrintRecursive(subtree[key], nextPrefix, withSymbols);
-  }
-}
-
-function prettyPrint(tree, withSymbols) {
-  const root = Object.keys(tree)[0];
-  if (!root) {
-    return;
-  }
-
-  console.log(path.basename(root));
-  if (withSymbols) {
-    printSymbols(root, '');
-  }
-
-  prettyPrintRecursive(tree[root], '', withSymbols);
-}
+const { version } = require('../package.json');
 
 program
-  .version(require('../package.json').version)
-  .argument('<filename>')
-  .option('-d, --directory <path>', 'The directory containing all JS files (defaults to current working directory)', process.cwd())
-  .option('--list-form [relative]', 'Print the dependency tree as a list. Pass "relative" to get relative paths.')
-  .option('--pretty-tree [type]', 'Print the dependency tree as a pretty tree view, like the `tree` command. The optional type can be `symbols` to include exported symbols.')
-  .option('--ignore-node-modules', 'Ignore dependencies in `node_modules`.')
-  .option('-c, --require-config <path>', 'The path to a requirejs config.')
-  .option('-w, --webpack-config <path>', 'The path to a webpack config.')
-  .option('--ts-config <path>', 'The path to a typescript config.')
-  .action((filename, options) => {
-    const treeOptions = {
-      filename,
-      directory: options.directory,
-      requireConfig: options.requireConfig,
-      webpackConfig: options.webpackConfig,
-      tsConfig: options.tsConfig,
-      ignoreNodeModules: options.ignoreNodeModules
-    };
+  .version(version)
+  .arguments('<filename>')
+  .option('-d, --directory <path>', 'The directory containing all JS files', process.cwd())
+  .option('--list-form [relative]', 'Print the dependency tree as a list. Pass "relative" to get relative paths')
+  .option('--pretty-tree [type]', 'Print the dependency tree as a pretty tree view. The optional type can be "symbols" to include exported symbols.')
+  .option('--ignore-node-modules', 'Ignore dependencies in node_modules')
+  .option('-c, --require-config <path>', 'The path to a requirejs config')
+  .option('-w, --webpack-config <path>', 'The path to a webpack config')
+  .option('--ts-config <path>', 'The path to a typescript config')
+  .parse(process.argv);
 
-    if (options.listForm) {
-      const list = dependencyTree.toList({
-        ...treeOptions,
-        isListForm: options.listForm
-      });
-      console.log(list.join('\n'));
-    } else if (options.prettyTree) {
-      const tree = dependencyTree(treeOptions);
-      prettyPrint(tree, options.prettyTree === 'symbols');
-    } else {
-      const tree = dependencyTree(treeOptions);
-      console.log(JSON.stringify(tree, null, 2));
+const options = program.opts();
+const [filename] = program.args;
+
+if (!filename) {
+  console.error('Error: filename not given');
+  process.exit(1);
+}
+
+const config = {
+  filename,
+  directory: options.directory,
+  requireConfig: options.requireConfig,
+  webpackConfig: options.webpackConfig,
+  tsConfig: options.tsConfig,
+  ignoreNodeModules: options.ignoreNodeModules
+};
+
+if (options.listForm) {
+  config.isListForm = options.listForm === 'relative' ? 'relative' : true;
+  const list = dependencyTree.toList(config);
+  console.log(list.join('\n'));
+  process.exit(0);
+}
+
+const tree = dependencyTree(config);
+const rootFilename = path.resolve(process.cwd(), filename);
+
+if (options.prettyTree) {
+  if (tree[rootFilename]) {
+    console.log(path.basename(rootFilename));
+    prettyPrintFile(rootFilename, tree[rootFilename], '');
+  } else {
+    console.log(path.basename(rootFilename));
+  }
+} else {
+  console.log(JSON.stringify(tree, null, 2));
+}
+
+function getSymbolShortKind(kind) {
+  switch (kind) {
+    case 'class': return 'C';
+    case 'function': return 'f';
+    case 'variable': return 'v';
+    case 'method': return 'm';
+    case 'property': return 'p';
+    case 'getter': return 'get';
+    case 'setter': return 'set';
+    case 'constructor': return 'ctor';
+    case 're-export': return '->';
+    case 'interface': return '•';
+    default: return '•';
+  }
+}
+
+function prettyPrintSymbols(symbols, prefix) {
+  symbols.forEach((symbol, i) => {
+    const isLast = i === symbols.length - 1;
+    const connector = isLast ? '└── ' : '├── ';
+    const newPrefix = prefix + (isLast ? '    ' : '│   ');
+
+    console.log(`${prefix}${connector}${getSymbolShortKind(symbol.kind)} ${symbol.name}`);
+
+    if (symbol.children && symbol.children.length > 0) {
+      prettyPrintSymbols(symbol.children, newPrefix);
     }
   });
+}
 
-program.parse(process.argv);
+function prettyPrintFile(filePath, subTree, prefix) {
+  const showSymbols = options.prettyTree === 'symbols';
+
+  const symbols = showSymbols ? extractExports(filePath).map(s => ({ ...s, _type: 'symbol' })) : [];
+  const dependencies = Object.keys(subTree).map(d => ({ path: d, _type: 'dependency' }));
+
+  const children = [...symbols, ...dependencies];
+
+  children.forEach((child, i) => {
+    const isLast = i === children.length - 1;
+    const connector = isLast ? '└── ' : '├── ';
+    const newPrefix = prefix + (isLast ? '    ' : '│   ');
+
+    if (child._type === 'symbol') {
+      console.log(`${prefix}${connector}${getSymbolShortKind(child.kind)} ${child.name}`);
+      if (child.children && child.children.length > 0) {
+        prettyPrintSymbols(child.children, newPrefix);
+      }
+    } else { // Dependency
+      console.log(`${prefix}${connector}${path.basename(child.path)}`);
+      prettyPrintFile(child.path, subTree[child.path], newPrefix);
+    }
+  });
+}
