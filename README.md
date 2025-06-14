@@ -106,7 +106,7 @@ Prints the dependency tree of the given filename.
 
 *   `-d, --directory <path>`: The directory containing all JS files (defaults to current working directory).
 *   `--list-form [relative]`: Print the dependency tree as a list. Pass "relative" to get relative paths.
-*   `--pretty-tree`: Print the dependency tree as a pretty tree view, like the `tree` command.
+*   `--pretty-tree [type]`: Print the dependency tree as a pretty tree view, like the `tree` command. The optional type can be `symbols` to include exported symbols.
 *   `--ignore-node-modules`: Ignore dependencies in `node_modules`.
 *   `-c, --require-config <path>`: The path to a requirejs config.
 *   `-w, --webpack-config <path>`: The path to a webpack config.
